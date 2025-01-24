@@ -41,9 +41,17 @@ export default function Home() {
     }
   };
 
-  const handleLogin = async () => {
-    const result = await makeApiCall('config/player');
-    if (!result.includes('Error')) {
+  // In page.js, update the handleLogin function
+const handleLogin = async () => {
+    try {
+      setStatus('Logging in...');
+      const result = await makeApiCall('config/player');
+      
+      if (result.includes('Error')) {
+        setStatus('Login failed. Check your PIN.');
+        return;
+      }
+      
       setIsAuthenticated(true);
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(result, 'text/xml');
@@ -53,9 +61,11 @@ export default function Home() {
         name: player.querySelector('name').textContent
       }));
       setPlayers(playersList);
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
     }
   };
-
+  
   const togglePlayer = (playerId) => {
     setSelectedPlayers(prev => 
       prev.includes(playerId)
