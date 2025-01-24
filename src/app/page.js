@@ -6,7 +6,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Volume2, VolumeX, Power, ChevronUp, ChevronDown } from 'lucide-react';
 
-const SVD_ADDRESS = '10.231.4.6';
+const SVD_ADDRESS = '10.201.40.51';
 const API_BASE_URL = `https://${SVD_ADDRESS}/sv-openapi/ws/rest/localcontrol`;
 
 export default function Home() {
@@ -25,6 +25,7 @@ export default function Home() {
 
   const makeApiCall = async (endpoint, method = 'GET', data = null) => {
     try {
+      console.log('Making API call to:', endpoint);
       const url = `${API_BASE_URL}/${endpoint}`;
       const options = {
         method,
@@ -34,24 +35,31 @@ export default function Home() {
         }
       };
       if (data) options.body = data;
+      console.log('API call options:', options);
       const response = await fetch(url, options);
-      return await response.text();
+      const result = await response.text();
+      console.log('API response:', result);
+      return result;
     } catch (error) {
+      console.error('API call error:', error);
       return `Error: ${error.message}`;
     }
   };
 
-  // In page.js, update the handleLogin function
-const handleLogin = async () => {
+  const handleLogin = async () => {
+    console.log('Login attempt with PIN:', pin);
     try {
-      setStatus('Logging in...');
+      setStatus('Attempting login...');
       const result = await makeApiCall('config/player');
-      
-      if (result.includes('Error')) {
-        setStatus('Login failed. Check your PIN.');
+      console.log('Login response:', result);
+
+      if (!result || result.includes('Error')) {
+        console.error('Login failed:', result);
+        setStatus('Login failed. Please check your PIN.');
         return;
       }
-      
+
+      console.log('Login successful, parsing player data');
       setIsAuthenticated(true);
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(result, 'text/xml');
@@ -60,12 +68,15 @@ const handleLogin = async () => {
         id: player.querySelector('id').textContent,
         name: player.querySelector('name').textContent
       }));
+      console.log('Players found:', playersList);
       setPlayers(playersList);
+      setStatus('');
     } catch (error) {
+      console.error('Login error:', error);
       setStatus(`Error: ${error.message}`);
     }
   };
-  
+
   const togglePlayer = (playerId) => {
     setSelectedPlayers(prev => 
       prev.includes(playerId)
@@ -75,25 +86,40 @@ const handleLogin = async () => {
   };
 
   const handlePower = async (state) => {
-    if (selectedPlayers.length === 0) return;
+    if (selectedPlayers.length === 0) {
+      setStatus('Please select a player first');
+      return;
+    }
     
-    await Promise.all(
-      selectedPlayers.map(playerId =>
-        makeApiCall(`control/player/power/${state}/${playerId}`)
-      )
-    );
-    setStatus(`Power ${state}`);
+    try {
+      await Promise.all(
+        selectedPlayers.map(playerId =>
+          makeApiCall(`control/player/power/${state}/${playerId}`)
+        )
+      );
+      setStatus(`Power ${state}`);
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+    }
   };
 
   const handleVolume = async (newVolume) => {
     setVolume(newVolume);
-    if (selectedPlayers.length === 0) return;
+    if (selectedPlayers.length === 0) {
+      setStatus('Please select a player first');
+      return;
+    }
     
-    await Promise.all(
-      selectedPlayers.map(playerId =>
-        makeApiCall(`control/player/volume/${newVolume}/${playerId}`)
-      )
-    );
+    try {
+      await Promise.all(
+        selectedPlayers.map(playerId =>
+          makeApiCall(`control/player/volume/${newVolume}/${playerId}`)
+        )
+      );
+      setStatus(`Volume set to ${newVolume}`);
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+    }
   };
 
   const changeChannel = async (channel) => {
@@ -102,12 +128,16 @@ const handleLogin = async () => {
       return;
     }
 
-    await Promise.all(
-      selectedPlayers.map(playerId =>
-        makeApiCall(`control/player/channel/${channel}/${playerId}`)
-      )
-    );
-    setStatus(`Changed to ${channels[channel] || channel}`);
+    try {
+      await Promise.all(
+        selectedPlayers.map(playerId =>
+          makeApiCall(`control/player/channel/${channel}/${playerId}`)
+        )
+      );
+      setStatus(`Changed to ${channels[channel] || channel}`);
+    } catch (error) {
+      setStatus(`Error: ${error.message}`);
+    }
   };
 
   if (!isAuthenticated) {
@@ -120,9 +150,15 @@ const handleLogin = async () => {
             placeholder="Enter PIN"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
             className="mb-4"
           />
           <Button onClick={handleLogin} className="w-full">Login</Button>
+          {status && (
+            <div className="mt-4 p-2 text-sm text-red-600">
+              {status}
+            </div>
+          )}
         </Card>
       </div>
     );
