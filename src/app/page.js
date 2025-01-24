@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Card } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Volume2, Power } from 'lucide-react';
 
 export default function Home() {
